@@ -2,24 +2,25 @@ import requests
 import lxml
 from bs4 import BeautifulSoup
 from os import system
+from googleapiclient.discovery import build
 
 class SearchEngines:
-    articels = []
+    results = []
 
     @classmethod
-    def display_articels(cls,articels) -> None:
+    def display_all(cls,articels) -> None:
         system('clear')
-        print(f"{cls.name} Results:")
+        print(f"{cls.NAME} Results:")
         for articel in articels:
             print(f"\n\n{articel['title']}\n\n{articel['description']}\n\n{articel['link']}")
             print(f"{'-'*100}")
 
     @classmethod
     def get(cls, query, amt=0) -> list:
-        srcs = cls.get_html(query)
+        srcs = cls.get_raw(query)
         if srcs:
-            articels = cls.get_articles(srcs, amt)
-            cls.display_articels(articels)
+            articels = cls.filter(srcs, amt)
+            cls.display_all(articels)
             return articels
         else:
             print("An error occured getting the page please try again later or contact me!")
@@ -27,21 +28,19 @@ class SearchEngines:
 
 class Wikipedia(SearchEngines):
 
-    name = "Wikipedia.org"
+    NAME = "Wikipedia.org"
     root_link = "https://de.wikipedia.org/w/index.php?fulltext=Suchen&search="
 
     # Getting Html if StatusCode != 200 returning False to stop programs
     @classmethod
-    def get_html(cls, query) -> bytes | bool:
-        q = requests.get(cls.root_link + query)
+    def get_raw(cls, query) -> bytes | bool:
+        q = requests.get(Wikipedia.root_link + query)
         if q.status_code != 200:
-            input(q.status_code)
             return False
         # self.check_if_site_single(q.url)
         return q.content
 
-    @staticmethod
-    def get_articels(htmlsrc: bytes, amt:int=0) -> list:
+    def filter( htmlsrc: bytes, amt:int=0) -> list:
 
         # Func To Scrape Data out of HTML Table element
         # Returing Dict with INFO
@@ -72,30 +71,16 @@ class Wikipedia(SearchEngines):
                     articels.append(articel)
                 except IndexError:
                     pass
-                finally:
-                    pass
         articels.reverse()
         return articels
     
-
-    @classmethod
-    def get(cls, query, amt) -> list:
-        srcs = cls.get_html(query)
-        if srcs:
-            articels = cls.get_articels(srcs, amt)
-            cls.display_articels(articels)
-            return articels
-        else:
-            print("An error occured getting the page please try again later or contact me!")
-            quit()
-
 class DuckDuckGo(SearchEngines):
 
-    name = "duckduckgo.com"
+    NAME = "duckduckgo.com"
     root_link = "https://html.duckduckgo.com/html?q="
 
-    @classmethod
-    def get_html(cls, query:str):
+    @staticmethod
+    def get_raw( query:str):
         import mechanize
         br=mechanize.Browser() # Init class
         br.set_handle_robots(False) # Make Robots Ignore
@@ -106,7 +91,8 @@ class DuckDuckGo(SearchEngines):
         res = br.submit() # Enter query
         return br.response().read() # Returning HTML
 
-    def get_articles(htmlsrc, amt)-> list:
+    @staticmethod
+    def filter(htmlsrc, amt)-> list:
         def get_articel_data(table)->dict:
             _articel = {"title": '',
                         "description": '',
@@ -131,8 +117,80 @@ class DuckDuckGo(SearchEngines):
         articels.reverse()
         return articels
 
-    
 
- 
+# TODO Display videos
+# TODO Display Thumbnail?
+class Youtube(SearchEngines):
 
+    NAME = "Youtube.com"
 
+    results = [] # List to store search results
+    API_KEY = ''
+
+    @property
+    def set_key(cls,key):
+        cls.API_KEY = key
+
+    @classmethod
+    def display_all(cls,videos):
+        print(f"{cls.NAME} Results:")
+        for video in videos:
+            print(f"\n\n{video['video_title']}"
+                  f"\nby {video['channel_name']} | Published at the: {video['publishing_date']}"
+                  f"\n\n{video['description']}"
+                  f"\n\n{video['video_link']}")
+            print(f"{'-'*100}")
+
+    @classmethod
+    def get_raw(cls, query,**kwargs):
+        try:
+            service = build('youtube', 'v3', developerKey=cls.API_KEY) # Building API connection
+            if kwargs: # Checking if amt is specified
+                yt_request = service.search().list(part='snippet', q=query, maxResults=kwargs['amt'])     
+            else:
+                yt_request = service.search().list(part='snippet', q=query, maxResults=20)
+            results = yt_request.execute() # Getting results
+            service.close() # Closing socket
+            return results["items"]
+        except:
+            print("You're API token seems to be not valid! Please check you're settings.ini file.\n"
+            "If this error doesn't stop please issue an ticket on github!")
+            quit()
+
+    # Func to sort needed yt data
+    @staticmethod
+    def filter(video_data_raw: dict, *args, **kwargs)-> list:
+        def get_info(vid_info):
+
+            video = {'video_title':'',
+                      'video_link':'',
+                      'description':'',
+                      'publishing_date':'',
+                      'thumbnail_link':'',
+                      'channel_name':''}
+            # TODO Add Channel and Livestream
+            if vid_info['id']['kind'] != 'youtube#video':
+                return
+            snipp = vid_info['snippet']
+            ids = vid_info['id']
+            video['video_link'] = "https://www.youtube.com/watch?v=" + ids['videoId']
+            video['video_title'] = snipp['title']
+            video['description'] = snipp['description']
+            video['publishing_date'] = snipp['publishedAt']
+            video['thumbnail_info'] = snipp['thumbnails']['default']
+            video['channel_name'] = snipp['channelTitle']
+            return video 
+        
+        videos = []
+        for item in video_data_raw:
+            video = get_info(item)
+            if video:
+                videos.append(video)
+        videos.reverse()
+        return videos
+
+def debug():
+    raw=Youtube.get_raw("shrek")
+    res = Youtube.filter(raw)
+if __name__=='__name__':
+    debug()

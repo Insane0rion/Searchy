@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 from os import system
-
-
 from sys import argv
+from src.fh import *
 from src.engines import *
 
 error_get_help_msg = " Enter python main.py help for instructions."
 
+
 # TODO Add other Engines
 ENGINES = {"wiki": Wikipedia,
-           "duck": DuckDuckGo}
+           "duck": DuckDuckGo,
+           "yt": Youtube}
 
-
-def get_args():
+def get_args(settings):
     del argv[0]
     if len(argv) == 0 or len(argv) > 3: # Checking if its a valid input or if HELP or ENGINES needed
         print("Invalid amount of arguments enter HELP to get a usage description!")
@@ -31,38 +31,41 @@ def get_args():
             print(f"| {value.name} : {key}")    # TODO Pretty up this
         print("|\n| Please tell me if you want an engine to be added!")
         quit()
-    amt = 0 # Setting Stan amount
-    engine = "duck" # Setting Stan Engine TODO mk file to get stan 
+    amt = int(settings['STANDART_AMT']) # Setting Stan amount
+    engine = settings['STANDART_ENGINE'] # Setting Stan Engine  
     query = '' 
     for arg in argv:
-        if arg in ENGINES: # if arg an engine swap to that
+        if arg in ENGINES.keys():            
             engine = arg
-            argv.remove(engine)
             pass
-        try:
-            amt = int(arg) 
-        except ValueError: # Else the query is set to arg if query is empty 
-            if query == '':
+        else:
+            try:
+                amt = int(arg)
+                pass
+            except ValueError:
                 query = arg
-            else:
-                print("Error: The engine you provided is not available!")
-                quit()
     return (engine, query, amt)
 
+def get_settings() -> dict:
+    fh = FileHandler()
+    return fh.load_settings()
 
-def run(parm:tuple):
+def run(parm:tuple, settings):
     try:
         engine = ENGINES[parm[0]]
-        engine.get(parm[1],parm[2])
+        if engine != Youtube:
+            engine.get(parm[1],parm[2])
+        else:
+            engine.API_KEY = settings["API_KEY"]
+            engine.get(parm[1], parm[2])
     except KeyError:
         print(f"Error: wrong engine provided!{error_get_help_msg}")
 
-
 def main():
-    run(get_args())
+    settings = get_settings()    
+    run(get_args(settings), settings)
 
 def debug():
-    run(("duck", "test", 0))
-
+    pass
 if __name__ == '__main__':
     main()
