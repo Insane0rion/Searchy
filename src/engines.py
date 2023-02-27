@@ -118,7 +118,6 @@ class DuckDuckGo(SearchEngines):
         return articels
 
 
-# TODO Display videos
 # TODO Display Thumbnail?
 class Youtube(SearchEngines):
 
@@ -190,7 +189,7 @@ class Youtube(SearchEngines):
         return videos
 
 def debug():
-    raw=Youtube.get_raw("shrek")
-    res = Youtube.filter(raw)
+    pass
+
 if __name__=='__name__':
     debug()
