@@ -1,71 +1,76 @@
 #!/usr/bin/env python
+import argparse
 from os import system
-from sys import argv
-from src.fh import *
+
 from src.engines import *
+from src.fh import *
 
 error_get_help_msg = " Enter python main.py help for instructions."
 
 
+SETTINGS = init_settings()
+Youtube.API_KEY = SETTINGS["API_KEY"]
+
 # TODO Add other Engines
-ENGINES = {"wiki": Wikipedia,
-           "duck": DuckDuckGo,
-           "yt": Youtube}
+# TODO AMAZON/EBAY/GEIZHALS
+ENGINES = {"wiki": Wikipedia, "duck": DuckDuckGo, "yt": Youtube}
 
-def get_args(settings):
-    del argv[0]
-    if len(argv) == 0 or len(argv) > 3: # Checking if its a valid input or if HELP or ENGINES needed
-        print("Invalid amount of arguments enter HELP to get a usage description!")
-        quit()
-    if len(argv) == 1 and argv[0] == "HELP":
-        print("|Searchy! An fast CLI search engine...\n|\n"
-              "|Command Usage: main.py [QUERY](needed) [ENGINE](optional) [AMOUNT](optional)\n|\n"
-              "|Please replace whitespaces of the query with underscores!!\n"
-              "|If you want to know which engines are available enter main.py ENGINES !\n"
-              "|If you want to report a bug please leave a ticket at github.com/Insane0rion/Searchy\n|\n"
-              "|Enjoy you're day and thanks for using my application!")
-        quit()
-    elif len(argv) == 1 and argv[0] == "ENGINES":
-        print("|Searchys available Engines:\n|")
-        for key, value in ENGINES.items():
-            print(f"| {value.name} : {key}")    # TODO Pretty up this
-        print("|\n| Please tell me if you want an engine to be added!")
-        quit()
-    amt = int(settings['STANDART_AMT']) # Setting Stan amount
-    engine = settings['STANDART_ENGINE'] # Setting Stan Engine  
-    query = '' 
-    for arg in argv:
-        if arg in ENGINES.keys():            
-            engine = arg
-            pass
-        else:
-            try:
-                amt = int(arg)
-                pass
-            except ValueError:
-                query = arg
-    return (engine, query, amt)
 
-def get_settings() -> dict:
-    fh = FileHandler()
-    return fh.load_settings()
+def print_engines() -> None:
+    system("clear")
+    print("Searchy!\nAvailable Engines:")
+    for key, value in ENGINES.items():
+        print(f"{'-'*25}")
+        print(f"| {key}: {' '*(5-len(key))}{value.NAME}{' '*(15-len(value.NAME))}|")
+    print(f"{'-'*25}\nIf you want other engines to be added please reach out to me!")
+    quit()
 
-def run(parm:tuple, settings):
+
+def get_args_argparse() -> dict:
+    parser = argparse.ArgumentParser(
+        "Searchy! A CLI search enginge enter -h or --help to get further instructions",
+        epilog="\nIf you got any questions or want another engine to be added please reach out to me!",
+    )
+    parser.add_argument(
+        "--show-engines",
+        help="prints a list of valid engines (USE '.' BETWEEN SCRIPT AND FLAG)",
+        action="store_true",
+    )
+    parser.add_argument("QUERY", help="enter what you want to look for", type=str)
+    parser.add_argument(
+        "-N",
+        "--amt",
+        help="set the amount of results to be printed (default=20)",
+        type=int,
+        default=SETTINGS["STANDART_AMT"],
+    )
+    parser.add_argument(
+        "-e",
+        "--engine",
+        help="set the engine you want to use (default engine can be changed in the settings.ini)",
+        default=SETTINGS["STANDART_ENGINE"],
+    )
+    args = parser.parse_args()
+    if args.show_engines:
+        print_engines()
+    return {"engine": args.engine, "amt": args.amt, "query": args.QUERY}
+
+
+def run(parm: dict):
     try:
-        engine = ENGINES[parm[0]]
-        if engine != Youtube:
-            engine.get(parm[1],parm[2])
-        else:
-            engine.API_KEY = settings["API_KEY"]
-            engine.get(parm[1], parm[2])
+        ENGINES[parm["engine"]].get(parm["query"], parm["amt"])
     except KeyError:
         print(f"Error: wrong engine provided!{error_get_help_msg}")
 
+
 def main():
-    settings = get_settings()    
-    run(get_args(settings), settings)
+    args = get_args_argparse()
+    run(args)
+
 
 def debug():
-    pass
-if __name__ == '__main__':
+    get_args_argparse()
+
+
+if __name__ == "__main__":
     main()
