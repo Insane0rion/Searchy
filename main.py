@@ -5,8 +5,6 @@ from os import system
 from src.engines import *
 from src.fh import *
 
-error_get_help_msg = " Enter python main.py help for instructions."
-
 
 SETTINGS = init_settings()
 Youtube.API_KEY = SETTINGS["API_KEY"]
@@ -26,7 +24,7 @@ def print_engines() -> None:
     quit()
 
 
-def get_args_argparse() -> dict:
+def get_args() -> dict:
     parser = argparse.ArgumentParser(
         "Searchy! A CLI search enginge enter -h or --help to get further instructions",
         epilog="\nIf you got any questions or want another engine to be added please reach out to me!",
@@ -36,7 +34,6 @@ def get_args_argparse() -> dict:
         help="prints a list of valid engines (USE '.' BETWEEN SCRIPT AND FLAG)",
         action="store_true",
     )
-    parser.add_argument("QUERY", help="enter what you want to look for", type=str)
     parser.add_argument(
         "-N",
         "--amt",
@@ -50,10 +47,13 @@ def get_args_argparse() -> dict:
         help="set the engine you want to use (default engine can be changed in the settings.ini)",
         default=SETTINGS["STANDART_ENGINE"],
     )
+    parser.add_argument("query", nargs='?',help="enter what you want to look for",default=' ')
     args = parser.parse_args()
     if args.show_engines:
         print_engines()
-    return {"engine": args.engine, "amt": args.amt, "query": args.QUERY}
+        quit()
+    return {"engine": args.engine, "amt": args.amt, "query": args.query}
+
 
 
 def run(parm: dict):
@@ -64,7 +64,7 @@ def run(parm: dict):
 
 
 def main():
-    args = get_args_argparse()
+    args = get_args()
     run(args)
 
 
