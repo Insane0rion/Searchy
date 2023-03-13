@@ -7,6 +7,7 @@ from googleapiclient.discovery import build
 
 class SearchEngines:
     results = []
+    no_results_error = "Error: Couldn't find any results! If this keeps coming up, please issue a ticket!"
 
     @classmethod
     def display_all(cls, articels) -> None:
@@ -27,8 +28,7 @@ class SearchEngines:
             return articels
         else:
             print(
-                "An error occured getting the page please try again later or contact me!"
-            )
+                "An error occured getting the page please try again later or contact me!"   )
             quit()
 
 
@@ -36,7 +36,8 @@ class Wikipedia(SearchEngines):
     NAME = "Wikipedia.org"
     root_link = "https://de.wikipedia.org/w/index.php?fulltext=Suchen&search="
 
-    def filter(htmlsrc: bytes, amt: int = 0) -> list:
+    @classmethod
+    def filter(cls, htmlsrc: bytes, amt: int = 0) -> list:
         # Func To Scrape Data out of HTML Table element
         # Returing Dict with INFO
         def get_articel_data(articel_table):
@@ -55,19 +56,22 @@ class Wikipedia(SearchEngines):
         soup = BeautifulSoup(htmlsrc, "lxml")
         # Finding all or just the amt releated articels and scrape their Info
         tables = soup.find_all("td", class_="searchResultImage-text")
-        if amt == 0:
-            for table in tables:
-                articel = get_articel_data(table)
-                articels.append(articel)
-        else:
-            for i in range(amt):
-                try:
+        try:
+            if amt == 0:
+                for table in tables:
+                    articel = get_articel_data(table)
+                    articels.append(articel)
+            else:
+                for i in range(amt):
                     articel = get_articel_data(tables[i])
                     articels.append(articel)
-                except IndexError:
-                    pass
-        articels.reverse()
-        return articels
+            articels.reverse()
+            return articels
+
+        except IndexError:
+            system('clear')
+            print(cls.no_results_error)
+            quit()
 
     @classmethod
     def get_raw(cls, query):
@@ -91,8 +95,8 @@ class DuckDuckGo(SearchEngines):
         res = br.submit()  # Enter query
         return br.response().read()  # Returning HTML
 
-    @staticmethod
-    def filter(htmlsrc, amt) -> list:
+    @classmethod
+    def filter(cls,htmlsrc, amt) -> list:
         def get_articel_data(table) -> dict:
             _articel = {"title": "", "description": "", "link": ""}
             _articel["title"] = table.find("a", class_="result__a").text
@@ -106,16 +110,21 @@ class DuckDuckGo(SearchEngines):
         soup = BeautifulSoup(htmlsrc, "lxml")
         # Finding all or just the amt releated articels and scrape their Info
         tables = soup.find_all("div", class_="links_main links_deep result__body")
-        if amt == 0:
-            for table in tables:
-                articel = get_articel_data(table)
-                articels.append(articel)
-        else:
-            for i in range(amt):
-                articel = get_articel_data(tables[i])
-                articels.append(articel)
-        articels.reverse()
-        return articels
+        try:
+            if amt == 0:
+                for table in tables:
+                    articel = get_articel_data(table)
+                    articels.append(articel)
+            else:
+                for i in range(amt):
+                    articel = get_articel_data(tables[i])
+                    articels.append(articel)
+            articels.reverse()
+            return articels
+        except IndexError:
+            print(cls.no_results_error)
+            quit()
+     
 
 
 # TODO Display Thumbnail?
@@ -189,7 +198,6 @@ class Youtube(SearchEngines):
             video["thumbnail_info"] = snipp["thumbnails"]["default"]
             video["channel_name"] = snipp["channelTitle"]
             return video
-
         videos = []
         for item in video_data_raw:
             video = get_info(item)
